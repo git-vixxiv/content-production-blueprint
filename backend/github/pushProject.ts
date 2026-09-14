@@ -27,6 +27,19 @@ function toBase64Utf8(str: string): string {
 }
 
 /**
+ * Normalizes a repo-relative path into components GitHub accepts: forward slashes
+ * only, no leading/trailing slash, no empty/`.`/`..` segments. Returns '' if the
+ * path collapses to nothing (caller should skip it).
+ */
+function normalizePath(raw: string): string {
+  const parts = raw
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((seg) => seg !== '' && seg !== '.' && seg !== '..')
+  return parts.join('/')
+}
+
+/**
  * Pushes a batch of files to a GitHub repo via the Contents API
  * (PUT /repos/{owner}/{repo}/contents/{path}), one file per call.
  *
@@ -61,22 +74,28 @@ export default async function (req: { params: PushProjectParams; user: User }) {
   let lastCommitSha = ''
   let lastCommitUrl = ''
   let pushed = 0
+  const skipped: string[] = []
 
   for (const f of files) {
-    const existingSha = shaByPath[f.path]
+    const path = normalizePath(f.path)
+    if (!path) {
+      skipped.push(f.path)
+      continue
+    }
+    const existingSha = shaByPath[path]
     const body: {
       message: string
       content: string
       branch: string
       sha?: string
     } = {
-      message: `${message}: ${f.path}`,
+      message: `${message}: ${path}`,
       content: toBase64Utf8(f.content),
       branch,
     }
     if (existingSha) body.sha = existingSha
 
-    const res = await retoolio.repos.createOrUpdateFileContents(owner, repo, f.path, body)
+    const res = await retoolio.repos.createOrUpdateFileContents(owner, repo, path, body)
     const commit = (res.data as { commit?: { sha?: string; html_url?: string } }).commit
     if (commit?.sha) lastCommitSha = commit.sha
     if (commit?.html_url) lastCommitUrl = commit.html_url
@@ -87,5 +106,6 @@ export default async function (req: { params: PushProjectParams; user: User }) {
     commit: lastCommitSha,
     htmlUrl: lastCommitUrl || `https://github.com/${owner}/${repo}/tree/${branch}`,
     filesPushed: pushed,
+    skipped,
   }
 }
