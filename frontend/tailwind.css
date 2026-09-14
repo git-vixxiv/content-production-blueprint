@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Recharts v3 puts tabIndex=0 and role="application" on the inner <svg class="recharts-surface">
+   for keyboard accessibility, which makes the browser draw its default (blue) focus outline
+   on click. Replace with the theme ring so focus styling stays consistent with shadcn. */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Replace the browser's native <select> arrow (pinned to the far edge, off-theme) with a themed
+   chevron at the padding inset. Lives in this theme-independent base stylesheet rather than
+   orgTheme.css so it still applies under theme packages, whose orgTheme.css is variables-only. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: calc(var(--spacing) + 1.25rem);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing) center;
+  background-size: 1rem 1rem;
+}
+
+/* Listboxes (multiple / size>1) have no dropdown arrow to replace. */
+select[multiple],
+select[size]:not([size="1"]) {
+  background-image: none;
+  padding-right: var(--spacing);
+}
