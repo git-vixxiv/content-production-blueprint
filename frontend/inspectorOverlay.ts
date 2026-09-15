@@ -525,6 +525,8 @@
           type: RETOOL_PREVIEW_INSPECTOR_ELEMENT_SELECTED_MESSAGE_TYPE,
           visualContext: buildVisualEditingContext(target),
           pointer: { x: event.clientX, y: event.clientY },
+          // Distinguishes same-selectorPath elements across routes so a retained draft can't restore onto the wrong page.
+          pageKey: window.location.pathname + window.location.search + window.location.hash,
         },
         expectedParentOrigin,
       )
