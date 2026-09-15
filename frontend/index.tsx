@@ -20,12 +20,22 @@ const basename = viteBaseMatch?.[1] ?? rrAppMatch?.[1] ?? '/'
 const initialSearchParams = new URLSearchParams(window.location.search)
 const expectedParentOrigin = initialSearchParams.get('retool-parent-origin') ?? window.location.origin
 
-const previewInternalSearchParamNames = ['sandboxToken', 'retool-theme', 'retool-parent-origin', 'retool-iframe-hosted-mode']
+const previewInternalSearchParamNames = ["sandboxToken","retool-theme","retool-parent-origin","retool-iframe-hosted-mode"]
+const shellOwnedSearchParamNames = ["finishedOAuth","sandboxToken","retool-theme","retool-parent-origin","retool-iframe-hosted-mode"]
 const previewInternalSearchParams = new URLSearchParams()
 for (const name of previewInternalSearchParamNames) {
   for (const value of initialSearchParams.getAll(name)) {
     previewInternalSearchParams.append(name, value)
   }
+}
+
+// Remove shell-owned search params from the search string so the end user doesn't see ?retool-parent-origin=... etc. in the browser address bar
+const stripPreviewInternalParams = (search: string): string => {
+  const params = new URLSearchParams(search)
+  for (const name of shellOwnedSearchParamNames) {
+    params.delete(name)
+  }
+  return params.toString() ? '?' + params.toString() : ''
 }
 
 // Derive the parent frame's origin to scope postMessage calls and validate incoming messages.
@@ -60,7 +70,7 @@ function NavigationSyncer() {
     // POP = initial load or browser back/forward (parent drives via popstate).
     // REPLACE = programmatic redirect or parent-driven ${BROWSER_NAVIGATED_MESSAGE_TYPE}.
     if (navigationType !== 'PUSH') return
-    const msg = { type: 'IFRAME_NAVIGATED', pathname: location.pathname, search: location.search, hash: location.hash }
+    const msg = { type: 'IFRAME_NAVIGATED', pathname: location.pathname, search: stripPreviewInternalParams(location.search), hash: location.hash }
     console.debug('[NavigationSyncer] posting to parent', msg)
     if (PARENT_ORIGIN !== null) {
       window.parent.postMessage(msg, PARENT_ORIGIN)
@@ -107,15 +117,10 @@ function NavigationSyncer() {
 const getAppRelativeLocation = () => {
   const rawPathname = window.location.pathname
   const pathname = rawPathname.startsWith(basename) ? rawPathname.slice(basename.length) || '/' : rawPathname
-  const params = new URLSearchParams(window.location.search)
-  for (const name of previewInternalSearchParamNames) {
-    params.delete(name)
-  }
-  const search = params.toString() ? '?' + params.toString() : ''
 
   return {
     pathname: pathname.startsWith('/') ? pathname : '/' + pathname,
-    search,
+    search: stripPreviewInternalParams(window.location.search),
     hash: window.location.hash,
   }
 }
@@ -392,7 +397,7 @@ const useMemoryRouter = inIframeMode
 const initialAppEntry = (() => {
   const { pathname, search, hash } = window.location
   const appPath = pathname.startsWith(basename) ? pathname.slice(basename.length) || '/' : pathname
-  return (appPath.startsWith('/') ? appPath : '/' + appPath) + search + hash
+  return (appPath.startsWith('/') ? appPath : '/' + appPath) + stripPreviewInternalParams(search) + hash
 })()
   
 const Router = useMemoryRouter ? MemoryRouter : BrowserRouter
