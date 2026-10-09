@@ -1,0 +1,19 @@
+/* App-level base styles, loaded after the org theme so these win the cascade.
+   Fixes dark-mode readability: nothing in the base layer set a body text color,
+   so Radix portals (Dialog, Sheet, Drawer, AlertDialog) — which mount at
+   document.body, outside the app's text-foreground wrapper — inherited the
+   browser default (black) on their bg-background surface. In dark mode that is
+   black-on-near-black. Anchoring body to the theme tokens makes every portalled
+   surface inherit a readable foreground in both light and dark mode. */
+
+body {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+}
+
+/* Belt-and-suspenders for portalled overlays that set their own bg-background
+   but no text color. */
+[role='dialog'],
+[role='alertdialog'] {
+  color: hsl(var(--foreground));
+}
